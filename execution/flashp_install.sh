@@ -26,11 +26,46 @@ fi
 echo -e "\n${YELLOW}1. Atualizando pacotes do sistema...${NC}"
 apt update && apt upgrade -y
 
+# Variáveis de detecção
+HAS_NGINX=0
+HAS_DOCKER=0
+HAS_PORTAINER=0
+HAS_COOLIFY=0
+HAS_EASYPANEL=0
+
+check_infrastructure() {
+    echo -e "${BLUE}Auditoria de Infraestrutura...${NC}"
+    
+    # Nginx
+    if command -v nginx &> /dev/null; then HAS_NGINX=1; fi
+    
+    # Docker
+    if command -v docker &> /dev/null; then 
+        HAS_DOCKER=1
+        # Portainer
+        if [ "$(docker ps -a -q -f name=portainer)" ]; then HAS_PORTAINER=1; fi
+        # Easypanel
+        if [ "$(docker ps -a -q -f name=easypanel)" ]; then HAS_EASYPANEL=1; fi
+    fi
+    
+    # Coolify (Caminho padrão de dados)
+    if [ -d "/data/coolify" ]; then HAS_COOLIFY=1; fi
+    # Easypanel (Caminho padrão de config caso container mude nome)
+    if [ -d "/etc/easypanel" ]; then HAS_EASYPANEL=1; fi
+}
+
+check_infrastructure
+
 echo -e "\n${BLUE}Escolha o método de instalação:${NC}"
-echo "1) Bare Metal (Node.js + PM2 + Nginx + SSL)"
-echo "2) Docker + Portainer + Nginx"
-echo "3) Coolify (Ferramenta Completa)"
-echo "4) Easypanel (Painel Simples)"
+[ $HAS_NGINX -eq 1 ] && TAG_NGINX="${GREEN}[DETECTADO]${NC}" || TAG_NGINX=""
+[ $HAS_PORTAINER -eq 1 ] && TAG_PORTAINER="${GREEN}[DETECTADO]${NC}" || TAG_PORTAINER=""
+[ $HAS_COOLIFY -eq 1 ] && TAG_COOLIFY="${GREEN}[DETECTADO]${NC}" || TAG_COOLIFY=""
+[ $HAS_EASYPANEL -eq 1 ] && TAG_EASYPANEL="${GREEN}[DETECTADO]${NC}" || TAG_EASYPANEL=""
+
+echo -e "1) Bare Metal (Node.js + PM2 + Nginx) $TAG_NGINX"
+echo -e "2) Docker + Portainer $TAG_PORTAINER"
+echo -e "3) Coolify (Ferramenta Completa) $TAG_COOLIFY"
+echo -e "4) Easypanel (Painel Simples) $TAG_EASYPANEL"
 echo "5) Sair"
 read -p "Opção: " OPTION
 
@@ -123,37 +158,74 @@ EOF
     ;;
 
   2)
-    echo -e "\n${YELLOW}### Instalação Portainer + Nginx ###${NC}"
-    # Docker
-    if ! command -v docker &> /dev/null; then
-        echo -e "${BLUE}Instalando Docker...${NC}"
-        curl -fsSL https://get.docker.com | sh
+    echo -e "\n${YELLOW}### Opção Portainer ###${NC}"
+    if [ $HAS_PORTAINER -eq 1 ]; then
+        echo -e "${GREEN}Portainer detectado!${NC}"
+        echo -e "Deseja gerar o arquivo 'docker-compose.yml' otimizado para o Flashp?"
+        read -p "(s/n): " GEN_COMPOSE
+        if [ "$GEN_COMPOSE" == "s" ]; then
+            cat <<EOF > flashp-compose.yml
+version: '3.8'
+services:
+  flashp:
+    image: node:20-alpine
+    container_name: flashp_app
+    working_dir: /app
+    command: sh -c "npm install && npm run build && npm start"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    restart: always
+EOF
+            echo -e "${GREEN}✔ Arquivo 'flashp-compose.yml' gerado com sucesso!${NC}"
+            echo -e "${BLUE}Instruções:${NC}"
+            echo "1. No Portainer, vá em Stacks > Add Stack."
+            echo "2. Copie o conteúdo de 'flashp-compose.yml' ou aponte para o repositório Git."
+        fi
+    else
+        # Docker
+        if [ $HAS_DOCKER -eq 0 ]; then
+            echo -e "${BLUE}Instalando Docker...${NC}"
+            curl -fsSL https://get.docker.com | sh
+        fi
+        # Portainer
+        echo -e "${BLUE}Instalando Portainer...${NC}"
+        docker volume create portainer_data
+        docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
+        echo -e "\n${GREEN}✔ Portainer instalado em: https://SEU-IP:9443${NC}"
     fi
-    
-    # Portainer
-    echo -e "${BLUE}Instalando Portainer...${NC}"
-    docker volume create portainer_data
-    docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
-
-    echo -e "\n${GREEN}✔ Portainer instalado em: https://SEU-IP:9443${NC}"
-    echo -e "${YELLOW}Instruções:${NC}"
-    echo "1. Acesse o Portainer e crie um novo Stack."
-    echo "2. Use o link do seu GitHub ($GIT_URL) para fazer o deploy automático do Flashp."
-    echo "3. Recomendamos usar Nginx Proxy Manager no Docker para gerenciar domínios."
     ;;
 
   3)
-    echo -e "\n${YELLOW}### Instalação Coolify ###${NC}"
-    curl -fsSL https://get.coollabs.io/coolify/install.sh | bash
-    echo -e "\n${GREEN}✔ Coolify instalado com sucesso!${NC}"
-    echo "Acesse a interface web na porta 8000 para configurar o projeto Flashp via GitHub."
+    echo -e "\n${YELLOW}### Opção Coolify ###${NC}"
+    if [ $HAS_COOLIFY -eq 1 ]; then
+        echo -e "${GREEN}Coolify detectado!${NC}"
+        echo -e "${BLUE}Para instalar o Flashp no Coolify:${NC}"
+        echo "1. Acesse o painel Coolify (porta 8000)."
+        echo "2. Crie uma nova 'Application' > 'GitHub Repository'."
+        echo "3. Configurações recomendadas: Port 3000 | Nixpack/Build Pack Auto."
+    else
+        echo -e "${BLUE}Instalando Coolify...${NC}"
+        curl -fsSL https://get.coollabs.io/coolify/install.sh | bash
+        echo -e "\n${GREEN}✔ Coolify instalado!${NC}"
+    fi
     ;;
 
   4)
-    echo -e "\n${YELLOW}### Instalação Easypanel ###${NC}"
-    curl -sSL https://get.easypanel.io | sh
-    echo -e "\n${GREEN}✔ Easypanel instalado com sucesso!${NC}"
-    echo "Acesse a interface web na porta 3000 (ou conforme indicado pelo Easypanel) para configurar."
+    echo -e "\n${YELLOW}### Opção Easypanel ###${NC}"
+    if [ $HAS_EASYPANEL -eq 1 ]; then
+        echo -e "${GREEN}Easypanel detectado!${NC}"
+        echo -e "${BLUE}Para instalar o Flashp no Easypanel:${NC}"
+        echo "1. Acesse o Easypanel (porta 3000)."
+        echo "2. Crie um novo 'Project' > 'Service' > 'Git'."
+        echo "3. Repositório: $GIT_URL"
+        echo "4. Build: Node.js | Port: 3000"
+    else
+        echo -e "${BLUE}Instalando Easypanel...${NC}"
+        curl -sSL https://get.easypanel.io | sh
+        echo -e "\n${GREEN}✔ Easypanel instalado!${NC}"
+    fi
     ;;
 
   5)

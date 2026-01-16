@@ -69,8 +69,3 @@ chmod +x execution/flashp_install.sh
 sudo ./execution/flashp_install.sh
 ```
 
-## 🌐 Deploy Manual
-Para detalhes sobre como implantar em uma VPS manualmente passo a passo, consulte o arquivo `vps_deployment_guide.md` no repositório.
-
----
-Desenvolvido com foco em velocidade e privacidade. ⚡

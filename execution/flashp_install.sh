@@ -26,6 +26,20 @@ fi
 echo -e "\n${YELLOW}1. Atualizando pacotes do sistema...${NC}"
 apt update && apt upgrade -y
 
+echo -e "\n${BLUE}Configuração Global de Domínio:${NC}"
+echo "Você já tem um domínio apontado para este servidor?"
+echo "1) Sim (Usar Domínio + SSL/HTTPS)"
+echo "2) Não (Usar apenas IP via porta 80)"
+read -p "Opção: " GLOBAL_DOMAIN_OPT
+
+if [ "$GLOBAL_DOMAIN_OPT" == "1" ]; then
+    read -p "Digite seu domínio (ex: flashp.meudominio.com): " DOMAIN
+    HAS_DOMAIN=1
+else
+    HAS_DOMAIN=0
+    echo -e "${YELLOW}Aviso: Sem domínio, o acesso será via IP sem criptografia (HTTP).${NC}"
+fi
+
 # Variáveis de detecção
 HAS_NGINX=0
 HAS_DOCKER=0
@@ -109,20 +123,12 @@ case $OPTION in
         echo -e "${GREEN}Nginx já detectado. Aplicando manutenções...${NC}"
     fi
 
-    echo -e "\n${BLUE}Configuração de Acesso (Domínio/IP):${NC}"
-    echo "1) Com Domínio (Configura Nginx + SSL/HTTPS)"
-    echo "2) Sem Domínio (Apenas IP via porta 80)"
-    read -p "Opção: " DOMAIN_OPTION
-
-    if [ "$DOMAIN_OPTION" == "1" ]; then
-        read -p "Qual será o domínio do projeto? (ex: flashp.seu-dominio.com): " DOMAIN
+    if [ $HAS_DOMAIN -eq 1 ]; then
         CONF_FILE="flashp"
         SERVER_NAME="$DOMAIN"
     else
-        DOMAIN=""
         CONF_FILE="flashp_ip"
         SERVER_NAME="_"
-        echo -e "${YELLOW}Usando configuração baseada em IP (Porta 80).${NC}"
     fi
     
     # Nginx Config
@@ -145,10 +151,10 @@ EOF
     nginx -t && systemctl restart nginx
 
     # SSL (Somente se tiver domínio)
-    if [ "$DOMAIN_OPTION" == "1" ]; then
+    if [ $HAS_DOMAIN -eq 1 ]; then
         echo -e "\n${YELLOW}Configurando Certificado SSL...${NC}"
         apt install certbot python3-certbot-nginx -y
-        certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email webmaster@$DOMAIN || echo -e "${RED}Erro ao gerar SSL. Verifique se o domínio está apontado para este IP.${NC}"
+        certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email webmaster@$DOMAIN || echo -e "${RED}Erro ao gerar SSL. Verifique o apontamento.${NC}"
         FINAL_URL="https://$DOMAIN"
     else
         FINAL_URL="http://$(hostname -I | awk '{print $1}')"
@@ -164,24 +170,11 @@ EOF
         echo -e "Deseja gerar o arquivo 'docker-compose.yml' otimizado para o Flashp?"
         read -p "(s/n): " GEN_COMPOSE
         if [ "$GEN_COMPOSE" == "s" ]; then
-            cat <<EOF > flashp-compose.yml
-version: '3.8'
-services:
-  flashp:
-    image: node:20-alpine
-    container_name: flashp_app
-    working_dir: /app
-    command: sh -c "npm install && npm run build && npm start"
-    ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
-    restart: always
-EOF
-            echo -e "${GREEN}✔ Arquivo 'flashp-compose.yml' gerado com sucesso!${NC}"
+            cp docker-compose.example.yml docker-compose.yml
+            echo -e "${GREEN}✔ Arquivo 'docker-compose.yml' criado a partir do exemplo!${NC}"
             echo -e "${BLUE}Instruções:${NC}"
             echo "1. No Portainer, vá em Stacks > Add Stack."
-            echo "2. Copie o conteúdo de 'flashp-compose.yml' ou aponte para o repositório Git."
+            echo "2. Use o conteúdo do arquivo localizado em: $(pwd)/docker-compose.yml"
         fi
     else
         # Docker

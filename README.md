@@ -69,3 +69,31 @@ chmod +x execution/flashp_install.sh
 sudo ./execution/flashp_install.sh
 ```
 
+## 🛠️ Guia por Ferramenta
+
+### Como instalar no Portainer?
+1. No Portainer, acesse **Stacks** > **Add stack**.
+2. Escolha **Repository** ou **Web editor**.
+3. Se usar o editor, utilize as configurações contidas no arquivo [docker-compose.example.yml](docker-compose.example.yml).
+4. Se usar **Repository**, aponte para o link do seu GitHub e configure a porta 3000.
+
+### Como instalar no Coolify?
+1. Acesse o painel do Coolify.
+2. Clique em **Create New Resource** > **Application** > **GitHub Repository**.
+3. Selecione o repositório Flashp.
+4. O Coolify detectará automaticamente o Next.js. Garanta que a porta de destino seja **3000**.
+5. Clique em **Deploy**.
+
+### Como instalar no Easypanel?
+1. No Easypanel, crie um novo **Project**.
+2. Clique em **Add Service** > **App** > **Git**.
+3. Insira a URL do seu repositório GitHub.
+4. Em **Environment**, escolha **Node.js**.
+5. Em **Domains**, aponte seu domínio para a porta **3000**.
+
+## 🌐 Deploy Manual
+Para detalhes sobre como implantar em uma VPS manualmente passo a passo, consulte o arquivo [vps_deployment_guide.md](vps_deployment_guide.md) no repositório.
+
+---
+Desenvolvido com foco em velocidade e privacidade. ⚡
+

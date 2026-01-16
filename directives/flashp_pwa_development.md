@@ -38,3 +38,5 @@ Manter e expandir o conversor de imagens Flashp, garantindo privacidade (client-
 - 2026-01-15: Refinamento estético: uso de gradientes Verde para Verde Escuro (sem preto/amarelo) para representar sucesso de forma sóbria.
 - 2026-01-15: Adicionada visualização comparativa de tamanhos (Antes/Depois) com cálculo de economia percentual.
 - 2026-01-16: Criado script `execution/flashp_install.sh` para automação de deploy multi-plataforma (Bare Metal, Docker, Coolify, Easypanel).
+- 2026-01-16: Implementada detecção de infraestrutura híbrida e lógica de domínio global para simplificar fluxos de instalação.
+- 2026-01-16: Centralizada configuração de containers no arquivo `docker-compose.example.yml` para evitar redundâncias na documentação e scripts.

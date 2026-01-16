@@ -36,7 +36,7 @@ O **Flashp** é um conversor de imagens de alta performance e ultra-privado, foc
 
 1. Clone o repositório:
 ```bash
-git clone https://github.com/seu-usuario/flashp.git
+git clone https://github.com/Growlinkoficial/Flashp.git
 ```
 
 2. Instale as dependências:

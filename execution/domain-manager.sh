@@ -129,7 +129,8 @@ show_main_menu() {
     echo "  3) Remover domínio"
     echo "  4) Renovar certificado SSL"
     echo "  5) Testar configuração do Nginx"
-    echo "  6) Sair"
+    echo "  6) Remover COMPLETAMENTE Nginx + Certbot"
+    echo "  7) Sair"
     echo
     read -p "Opção: " option
     
@@ -139,7 +140,8 @@ show_main_menu() {
         3) remove_domain ;;
         4) renew_ssl ;;
         5) test_nginx ;;
-        6) log_info "Saindo..."; exit 0 ;;
+        6) purge_nginx_certbot ;;
+        7) log_info "Saindo..."; exit 0 ;;
         *) log_error "Opção inválida"; show_main_menu ;;
     esac
 }
@@ -526,6 +528,57 @@ test_nginx() {
 # ============================================================================
 # EXECUÇÃO PRINCIPAL
 # ============================================================================
+
+purge_nginx_certbot() {
+    echo
+    echo -e "${RED}⚠️  AVISO CRÍTICO: Isso removerá COMPLETAMENTE o Nginx e o Certbot do sistema!${NC}"
+    echo "Esta ação purgará todos os binários, configurações, certificados e logs."
+    echo
+    read -p "Deseja continuar? (s/N): " confirm
+    if [[ ! $confirm =~ ^[SsYy]$ ]]; then
+        log_info "Operação cancelada"
+        show_main_menu
+        return
+    fi
+
+    log_info "Iniciando purga do Nginx..."
+    sudo systemctl stop nginx 2>/dev/null || true
+    sudo systemctl disable nginx 2>/dev/null || true
+    sudo apt remove --purge nginx nginx-common nginx-core -y
+    sudo apt remove --purge nginx-full nginx-light -y
+    sudo apt autoremove --purge -y
+    sudo apt autoclean
+    sudo rm -rf /etc/nginx
+    sudo rm -rf /var/log/nginx
+    sudo rm -rf /var/cache/nginx
+    sudo rm -rf /usr/share/nginx
+
+    log_info "Iniciando purga do Certbot..."
+    sudo systemctl stop certbot.timer 2>/dev/null || true
+    sudo systemctl disable certbot.timer 2>/dev/null || true
+    sudo systemctl stop certbot.service 2>/dev/null || true
+    sudo systemctl disable certbot.service 2>/dev/null || true
+    sudo apt remove --purge certbot -y
+    sudo apt remove --purge python3-certbot-nginx python3-certbot-apache -y
+    sudo apt autoremove --purge -y
+    sudo apt autoclean
+    sudo rm -rf /etc/letsencrypt
+    sudo rm -rf /var/lib/letsencrypt
+    sudo rm -rf /var/log/letsencrypt
+
+    log_info "Limpando timers/cron remanescentes..."
+    # systemctl list-timers | grep certbot
+    sudo ls -l /etc/cron.d | grep certbot || true
+    sudo rm -f /etc/cron.d/certbot
+
+    log_success "Remoção concluída. Validando estado..."
+    whereis nginx
+    whereis certbot
+    
+    echo
+    read -p "Pressione ENTER para voltar ao menu..."
+    show_main_menu
+}
 
 main() {
     show_banner

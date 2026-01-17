@@ -322,20 +322,42 @@ cleanup_docker() {
     fi
 }
 
-cleanup_nginx() {
-    if ! command -v nginx &> /dev/null; then
+cleanup_nginx_certbot() {
+    if ! command -v nginx &> /dev/null && ! command -v certbot &> /dev/null; then
         return
     fi
     
     echo
-    read -p "Remover Nginx? (s/n): " remove_nginx
+    read -p "Remover COMPLETAMENTE Nginx e Certbot (Purga)? (s/n): " remove_nginx_certbot
     
-    if [[ $remove_nginx =~ ^[SsYy]$ ]]; then
-        log_info "Removendo Nginx..."
+    if [[ $remove_nginx_certbot =~ ^[SsYy]$ ]]; then
+        log_info "Iniciando purga do Nginx..."
         systemctl stop nginx 2>/dev/null || true
-        apt-get remove -y nginx nginx-common 2>/dev/null || true
-        apt-get autoremove -y 2>/dev/null || true
-        log_success "Nginx removido"
+        systemctl disable nginx 2>/dev/null || true
+        apt-get remove --purge nginx nginx-common nginx-core -y 2>/dev/null || true
+        apt-get remove --purge nginx-full nginx-light -y 2>/dev/null || true
+        apt-get autoremove --purge -y 2>/dev/null || true
+        apt-get autoclean 2>/dev/null || true
+        rm -rf /etc/nginx /var/log/nginx /var/cache/nginx /usr/share/nginx 2>/dev/null || true
+
+        log_info "Iniciando purga do Certbot..."
+        systemctl stop certbot.timer 2>/dev/null || true
+        systemctl disable certbot.timer 2>/dev/null || true
+        systemctl stop certbot.service 2>/dev/null || true
+        systemctl disable certbot.service 2>/dev/null || true
+        apt-get remove --purge certbot -y 2>/dev/null || true
+        apt-get remove --purge python3-certbot-nginx python3-certbot-apache -y 2>/dev/null || true
+        apt-get autoremove --purge -y 2>/dev/null || true
+        apt-get autoclean 2>/dev/null || true
+        rm -rf /etc/letsencrypt /var/lib/letsencrypt /var/log/letsencrypt 2>/dev/null || true
+
+        log_info "Limpando timers/cron remanescentes..."
+        ls -l /etc/cron.d | grep certbot || true
+        rm -f /etc/cron.d/certbot 2>/dev/null || true
+
+        log_success "Remoção de Nginx e Certbot concluída"
+        whereis nginx
+        whereis certbot
     fi
 }
 
@@ -398,7 +420,7 @@ main() {
     
     # Limpezas opcionais
     cleanup_docker
-    cleanup_nginx
+    cleanup_nginx_certbot
     cleanup_logs
     
     echo

@@ -25,7 +25,7 @@ Manage domains, Nginx configurations, and SSL certificates for services running 
 
 ## Execution Steps
 1. Run `execution/domain-manager.sh` with sudo.
-2. Select option (Add, List, Remove, Renew).
+2. Select option (Add, List, Remove, Renew, Purge Nginx/Certbot).
 3. Provide details as prompted by the wizard.
 
 ## Edge Cases

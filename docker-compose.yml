@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  flashp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: flashp_app
+
+    # Porta exposta (ajuste se necessário)
+    ports:
+      - "3000:3000"
+
+    # Restart automático
+    restart: unless-stopped
+
+    # Variáveis de ambiente
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+
+    # Health check para monitoramento
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Limites de recursos (previne consumo excessivo)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # Logs gerenciados (evita crescimento descontrolado)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Labels informativos para o Portainer
+    labels:
+      - "com.flashp.app=conversor-imagens"
+      - "com.flashp.version=1.0.0"
+      - "com.flashp.description=Conversor de Imagens para WebP - Client-Side"

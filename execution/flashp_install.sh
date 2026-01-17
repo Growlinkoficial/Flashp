@@ -503,6 +503,10 @@ configure_nginx_bare_metal() {
     
     log_info "Criando configuração do Nginx..."
     
+    # Remover configurações antigas se existirem
+    rm -f /etc/nginx/sites-enabled/flashp 2>/dev/null || true
+    rm -f /etc/nginx/sites-available/flashp 2>/dev/null || true
+    
     cat > "$conf_file" <<EOF
 server {
     listen 80;
@@ -525,7 +529,24 @@ EOF
     ln -sf "$conf_file" /etc/nginx/sites-enabled/flashp
     add_cleanup "rm -f /etc/nginx/sites-enabled/flashp /etc/nginx/sites-available/flashp 2>/dev/null || true"
     
-    nginx -t && systemctl restart nginx
+    # Testar antes de recarregar
+    if ! nginx -t 2>&1 | tee -a "$LOG_FILE"; then
+        log_error "Erro na configuração do Nginx"
+        log_info "Removendo configuração problemática..."
+        rm -f "$conf_file" /etc/nginx/sites-enabled/flashp
+        return 1
+    fi
+    
+    if ! systemctl reload nginx; then
+        log_error "Falha ao recarregar Nginx"
+        # Tentar restart
+        log_info "Tentando restart completo do Nginx..."
+        systemctl restart nginx || {
+            log_error "Falha ao reiniciar Nginx"
+            return 1
+        }
+    fi
+    
     log_success "Nginx configurado com sucesso"
 }
 
@@ -622,7 +643,14 @@ configure_portainer_domain() {
         systemctl enable nginx
     fi
     
-    cat > /etc/nginx/sites-available/portainer <<EOF
+    local config_name="portainer"
+    local config_file="/etc/nginx/sites-available/$config_name"
+    
+    # Remover configurações antigas se existirem
+    rm -f /etc/nginx/sites-enabled/portainer 2>/dev/null || true
+    rm -f /etc/nginx/sites-available/portainer 2>/dev/null || true
+    
+    cat > "$config_file" <<EOF
 server {
     listen 80;
     server_name $FULL_DOMAIN;
@@ -640,8 +668,20 @@ server {
 }
 EOF
     
-    ln -sf /etc/nginx/sites-available/portainer /etc/nginx/sites-enabled/
-    nginx -t && systemctl restart nginx
+    ln -sf "$config_file" /etc/nginx/sites-enabled/
+    
+    # Testar antes de recarregar
+    if ! nginx -t 2>&1 | tee -a "$LOG_FILE"; then
+        log_error "Erro na configuração do Nginx"
+        log_info "Removendo configuração problemática..."
+        rm -f "$config_file" /etc/nginx/sites-enabled/$config_name
+        return 1
+    fi
+    
+    systemctl reload nginx || {
+        log_error "Falha ao recarregar Nginx"
+        return 1
+    }
     
     configure_ssl
 }
@@ -708,7 +748,14 @@ configure_coolify_domain() {
         systemctl enable nginx
     fi
     
-    cat > /etc/nginx/sites-available/coolify <<EOF
+    local config_name="coolify"
+    local config_file="/etc/nginx/sites-available/$config_name"
+    
+    # Remover configurações antigas se existirem
+    rm -f /etc/nginx/sites-enabled/coolify 2>/dev/null || true
+    rm -f /etc/nginx/sites-available/coolify 2>/dev/null || true
+    
+    cat > "$config_file" <<EOF
 server {
     listen 80;
     server_name $FULL_DOMAIN;
@@ -727,8 +774,20 @@ server {
 }
 EOF
     
-    ln -sf /etc/nginx/sites-available/coolify /etc/nginx/sites-enabled/
-    nginx -t && systemctl restart nginx
+    ln -sf "$config_file" /etc/nginx/sites-enabled/
+    
+    # Testar antes de recarregar
+    if ! nginx -t 2>&1 | tee -a "$LOG_FILE"; then
+        log_error "Erro na configuração do Nginx"
+        log_info "Removendo configuração problemática..."
+        rm -f "$config_file" /etc/nginx/sites-enabled/$config_name
+        return 1
+    fi
+    
+    systemctl reload nginx || {
+        log_error "Falha ao recarregar Nginx"
+        return 1
+    }
     
     configure_ssl
 }
@@ -793,7 +852,14 @@ configure_easypanel_domain() {
         systemctl enable nginx
     fi
     
-    cat > /etc/nginx/sites-available/easypanel <<EOF
+    local config_name="easypanel"
+    local config_file="/etc/nginx/sites-available/$config_name"
+    
+    # Remover configurações antigas se existirem
+    rm -f /etc/nginx/sites-enabled/easypanel 2>/dev/null || true
+    rm -f /etc/nginx/sites-available/easypanel 2>/dev/null || true
+    
+    cat > "$config_file" <<EOF
 server {
     listen 80;
     server_name $FULL_DOMAIN;
@@ -812,8 +878,20 @@ server {
 }
 EOF
     
-    ln -sf /etc/nginx/sites-available/easypanel /etc/nginx/sites-enabled/
-    nginx -t && systemctl restart nginx
+    ln -sf "$config_file" /etc/nginx/sites-enabled/
+    
+    # Testar antes de recarregar
+    if ! nginx -t 2>&1 | tee -a "$LOG_FILE"; then
+        log_error "Erro na configuração do Nginx"
+        log_info "Removendo configuração problemática..."
+        rm -f "$config_file" /etc/nginx/sites-enabled/$config_name
+        return 1
+    fi
+    
+    systemctl reload nginx || {
+        log_error "Falha ao recarregar Nginx"
+        return 1
+    }
     
     configure_ssl
 }

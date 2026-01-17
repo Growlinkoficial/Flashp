@@ -689,7 +689,8 @@ deploy_coolify() {
     curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
     
     if [ $HAS_DOMAIN -eq 1 ]; then
-        local access_url="http://$FULL_DOMAIN:8000"
+        configure_coolify_domain
+        local access_url="https://$FULL_DOMAIN"
     else
         local access_url="http://$(hostname -I | awk '{print $1}'):8000"
     fi
@@ -699,6 +700,37 @@ deploy_coolify() {
     log_success "  URL de acesso: $access_url"
     log_success "  Primeiro login exigirá configuração"
     log_success "═══════════════════════════════════════════════════"
+}
+
+configure_coolify_domain() {
+    if [ $HAS_NGINX -eq 0 ]; then
+        apt-get install -y nginx
+        systemctl enable nginx
+    fi
+    
+    cat > /etc/nginx/sites-available/coolify <<EOF
+server {
+    listen 80;
+    server_name $FULL_DOMAIN;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+EOF
+    
+    ln -sf /etc/nginx/sites-available/coolify /etc/nginx/sites-enabled/
+    nginx -t && systemctl restart nginx
+    
+    configure_ssl
 }
 
 show_coolify_instructions() {
@@ -743,7 +775,8 @@ deploy_easypanel() {
     curl -sSL https://get.easypanel.io | sh
     
     if [ $HAS_DOMAIN -eq 1 ]; then
-        local access_url="http://$FULL_DOMAIN:3000"
+        configure_easypanel_domain
+        local access_url="https://$FULL_DOMAIN"
     else
         local access_url="http://$(hostname -I | awk '{print $1}'):3000"
     fi
@@ -752,6 +785,37 @@ deploy_easypanel() {
     log_success "  Easypanel instalado com sucesso!"
     log_success "  URL de acesso: $access_url"
     log_success "═══════════════════════════════════════════════════"
+}
+
+configure_easypanel_domain() {
+    if [ $HAS_NGINX -eq 0 ]; then
+        apt-get install -y nginx
+        systemctl enable nginx
+    fi
+    
+    cat > /etc/nginx/sites-available/easypanel <<EOF
+server {
+    listen 80;
+    server_name $FULL_DOMAIN;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+EOF
+    
+    ln -sf /etc/nginx/sites-available/easypanel /etc/nginx/sites-enabled/
+    nginx -t && systemctl restart nginx
+    
+    configure_ssl
 }
 
 show_easypanel_instructions() {

@@ -218,16 +218,33 @@ remove_portainer() {
 remove_coolify() {
     log_info "Removendo instalação do Coolify..."
     
-    # Coolify tem seu próprio processo de desinstalação
-    if [ -d "/data/coolify" ]; then
-        log_warning "Diretório de dados do Coolify detectado"
-        log_warning "Por favor, use o método oficial de desinstalação do Coolify ou remova manualmente /data/coolify"
-    fi
-    
-    # Remover containers do Coolify
+    # Parar containers do Coolify
     log_info "Parando containers do Coolify..."
     docker ps -a --format '{{.Names}}' | grep -i coolify | xargs -r docker stop 2>/dev/null || true
     docker ps -a --format '{{.Names}}' | grep -i coolify | xargs -r docker rm 2>/dev/null || true
+    
+    # Remover diretórios de dados do Coolify
+    if [ -d "/data/coolify" ]; then
+        log_info "Removendo diretório de dados do Coolify: /data/coolify"
+        rm -rf /data/coolify
+    fi
+    
+    if [ -d "/var/lib/coolify" ]; then
+        log_info "Removendo diretório de dados do Coolify: /var/lib/coolify"
+        rm -rf /var/lib/coolify
+    fi
+    
+    # Remover volumes do Coolify
+    log_info "Removendo volumes do Coolify..."
+    docker volume ls | grep -i coolify | awk '{print $2}' | xargs -r docker volume rm 2>/dev/null || true
+    
+    # Remover configuração do Nginx para o Coolify
+    rm -f /etc/nginx/sites-enabled/coolify 2>/dev/null || true
+    rm -f /etc/nginx/sites-available/coolify 2>/dev/null || true
+    
+    if command -v nginx &> /dev/null; then
+        nginx -t && systemctl reload nginx || log_warning "Teste de configuração do Nginx falhou"
+    fi
     
     log_success "Componentes do Coolify removidos"
 }
@@ -239,10 +256,22 @@ remove_easypanel() {
     docker ps -a --format '{{.Names}}' | grep -i easypanel | xargs -r docker stop 2>/dev/null || true
     docker ps -a --format '{{.Names}}' | grep -i easypanel | xargs -r docker rm 2>/dev/null || true
     
+    # Remover volumes do Easypanel
+    log_info "Removendo volumes do Easypanel..."
+    docker volume ls | grep -i easypanel | awk '{print $2}' | xargs -r docker volume rm 2>/dev/null || true
+    
     # Remover diretório de configuração do Easypanel
     if [ -d "/etc/easypanel" ]; then
         log_info "Removendo diretório de configuração do Easypanel..."
         rm -rf /etc/easypanel
+    fi
+    
+    # Remover configuração do Nginx para o Easypanel
+    rm -f /etc/nginx/sites-enabled/easypanel 2>/dev/null || true
+    rm -f /etc/nginx/sites-available/easypanel 2>/dev/null || true
+    
+    if command -v nginx &> /dev/null; then
+        nginx -t && systemctl reload nginx || log_warning "Teste de configuração do Nginx falhou"
     fi
     
     log_success "Componentes do Easypanel removidos"
